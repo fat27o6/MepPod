@@ -8,7 +8,7 @@ import validator from '../validators/appointment.validator.js';
 
 router.post('/', auth(["Admin", "Doctor", "Nurse", "Receptionist", "Patient"]), validator.createAppointment(), validate, ctrl.create);
 
-router.get('/', auth(["Admin", "Receptionist", "Doctor", "Accountant", "Nurse"]), ctrl.findAll);
+router.get('/', auth(["Admin", "Receptionist", "Doctor", "Accountant", "Nurse", 'Pharmacist']), ctrl.findAll);
 router.get('/:id', auth(["Admin", "Doctor", "Nurse", "Receptionist", "Accountant"]), ctrl.findById);
 router.get('/doc/:id', auth(["Admin", "Doctor", "Receptionist", "Accountant"]), ctrl.findByDocId);
 router.get('/patient/:id', auth(["Admin", "Doctor", "Nurse", "Receptionist", "Patient", "Accountant"]), ctrl.findByPatientId);
