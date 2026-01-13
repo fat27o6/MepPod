@@ -8,8 +8,8 @@ import validator from '../validators/patient.validator.js';
 
 router.post('/', auth(["Admin", "Receptionist"]), validator.createPatient(), validate, ctrl.create);
 
-router.get('/', auth(process.env.ALLROLE) , ctrl.findAll);
-router.get('/:id', auth(process.env.ALLROLE), ctrl.findById);
+router.get('/', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']) , ctrl.findAll);
+router.get('/:id', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']), ctrl.findById);
 
 router.put('/:id', auth(["Admin", "Receptionist"]), validator.updatePatient(), validate, ctrl.update);
 router.delete('/:id', auth("Admin"), ctrl.remove);

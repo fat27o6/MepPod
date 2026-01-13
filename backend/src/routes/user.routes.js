@@ -9,9 +9,9 @@ import validator from '../validators/user.validator.js';
 router.post('/', auth("Admin"), validator.createUser(), validate, ctrl.create);
 
 router.get('/', auth("Admin"), ctrl.findAll);
-router.get('/:id', auth(process.env.ALLROLE), ctrl.findById);
+router.get('/:id', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']), ctrl.findById);
 
-router.patch('/changepass/:id', auth(process.env.ALLROLE), ctrl.changepass);
+router.patch('/changepass/:id', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']), ctrl.changepass);
 router.put('/:id', auth("Admin"), validator.updateUser(), validate, ctrl.update);
 router.delete('/:id', auth("Admin"), ctrl.remove);
 router.put('/:id/restore', auth("Admin"), ctrl.restore);

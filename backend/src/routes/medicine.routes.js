@@ -32,8 +32,8 @@ const upload = multer({
 router.post('/', auth(["Admin", "Accountant", "Pharmacist"]), validator.createMedicine(), validate, ctrl.create);
 router.post('/import', auth(["Admin", "Accountant", "Pharmacist"]), upload.single('file'), ctrl.import);
 
-router.get('/', auth(process.env.ALLROLE), ctrl.findAll);
-router.get('/:id', auth(process.env.ALLROLE), ctrl.findById);
+router.get('/', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']), ctrl.findAll);
+router.get('/:id', auth(['Admin', 'Doctor', 'Nurse', 'Receptionist', 'Accountant', 'Pharmacist']), ctrl.findById);
 
 router.put('/:id', auth(["Admin", "Accountant", "Pharmacist"]), validator.updateMedicine(), validate, ctrl.update);
 router.delete('/:id', auth("Admin"), ctrl.remove);
