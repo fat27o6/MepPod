@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 import vnpay from '../utils/vnpay.js';
+import vnpayQR from '../utils/vnpay-qr.js';
 import paymentDao from '../dao/payment.dao.js';
 import invoiceDao from '../dao/invoice.dao.js';
 import Payment from '../models/payment.model.js';
@@ -75,6 +76,70 @@ class VNPayController {
             console.error('❌ VNPay createPaymentUrl error:', err);
             res.status(500).json({
                 error: err.message || 'Lỗi không xác định khi tạo VNPay URL',
+                detail: err.stack
+            });
+        }
+    }
+
+    async createQRCode(req, res) {
+        try {
+            const { invoice_id } = req.body;
+            console.log('📥 Nhận request tạo VNPay QR Code:', { invoice_id });
+
+            if (!invoice_id) {
+                return res.status(400).json({ error: 'Thiếu invoice_id' });
+            }
+
+            // 1. Kiểm tra invoice tồn tại
+            const invoice = await invoiceDao.findById(invoice_id);
+            if (!invoice) {
+                console.error('❌ Invoice không tồn tại:', invoice_id);
+                return res.status(404).json({ error: 'Hóa đơn không tồn tại' });
+            }
+
+            // 2. Tính tổng payment hiện tại
+            const existingPayments = await Payment.find({
+                invoice_id: invoice_id,
+                disabled: false
+            });
+            const totalPaid = existingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const remaining = invoice.total_amount - totalPaid;
+
+            if (remaining <= 0) {
+                return res.status(400).json({ error: 'Hóa đơn đã được thanh toán đầy đủ' });
+            }
+
+            // 3. Tạo QR code data từ VNPay
+            console.log('🔄 Tạo VNPay QR Code cho invoice:', invoice_id, 'amount:', remaining);
+            try {
+                const qrData = vnpayQR.createQRCodeData({
+                    orderId: invoice_id.toString(),
+                    amount: remaining,
+                    orderDescription: `Thanh toan hoa don ${invoice_id}`,
+                });
+                console.log('✅ VNPay QR Code đã được tạo thành công');
+
+                res.json({
+                    qrData: qrData.qrData,
+                    paymentUrl: qrData.paymentUrl,
+                    invoice_id,
+                    amount: remaining,
+                    expireDate: qrData.expireDate
+                });
+            } catch (vnpayError) {
+                console.error('❌ Lỗi khi tạo VNPay QR Code:', vnpayError);
+                if (vnpayError.message.includes('chưa được cấu hình')) {
+                    return res.status(500).json({
+                        error: vnpayError.message,
+                        detail: 'Vui lòng kiểm tra file .env và đảm bảo VNPAY_TMN_CODE và VNPAY_HASH_SECRET đã được cấu hình'
+                    });
+                }
+                throw vnpayError;
+            }
+        } catch (err) {
+            console.error('❌ VNPay createQRCode error:', err);
+            res.status(500).json({
+                error: err.message || 'Lỗi không xác định khi tạo VNPay QR Code',
                 detail: err.stack
             });
         }

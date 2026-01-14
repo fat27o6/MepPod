@@ -17,6 +17,15 @@ router.post(
     validate,
     ctrl.createPaymentUrl
 );
+router.post(
+    '/vnpay/create-qr',
+    auth(['Admin', 'Accountant']),
+    [
+        body('invoice_id').isMongoId().withMessage('Invoice ID không hợp lệ'),
+    ],
+    validate,
+    ctrl.createQRCode
+);
 //
 
 router.get('/vnpay-return', ctrl.returnUrl);
