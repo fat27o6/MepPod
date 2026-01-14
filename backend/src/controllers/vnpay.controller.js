@@ -260,7 +260,8 @@ class VNPayController {
      * Accepts query params: invoice_id, amount
      */
     async mockReturn(req, res) {
-        if (process.env.NODE_ENV === 'production') {
+        const mockAllowed = process.env.NODE_ENV !== 'production' || process.env.ENABLE_VNPAY_MOCK === 'true';
+        if (!mockAllowed) {
             return res.status(404).json({ error: 'Not available in production' });
         }
 
@@ -320,7 +321,8 @@ class VNPayController {
      * Accepts JSON body: { invoice_id, amount }
      */
     async mockIpn(req, res) {
-        if (process.env.NODE_ENV === 'production') {
+        const mockAllowed = process.env.NODE_ENV !== 'production' || process.env.ENABLE_VNPAY_MOCK === 'true';
+        if (!mockAllowed) {
             return res.status(404).json({ error: 'Not available in production' });
         }
 
