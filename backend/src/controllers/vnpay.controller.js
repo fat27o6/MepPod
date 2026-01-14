@@ -80,7 +80,7 @@ class VNPayController {
         try {
             const result = vnpay.verifyReturnUrl(req.query);
             const invoice_id = result.orderId;
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const frontendUrl = process.env.FRONTEND_URL || 'https://clinic-system-manager.vercel.app';
 
             if (!result.isValid || result.responseCode !== '00' || result.transactionStatus !== '00') {
             await session.abortTransaction();

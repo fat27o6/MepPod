@@ -22,11 +22,10 @@ class VNPay {
         this.hashSecret = process.env.VNPAY_HASH_SECRET || '';
         this.paymentUrl = process.env.VNPAY_PAYMENT_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
         // Sử dụng PORT từ env hoặc default 5050 (vì Mac thường conflict port 5000)
-        const backendPort = process.env.PORT || 5050;
         // Return URL nên trỏ về backend trực tiếp để xử lý
         // Backend sẽ xử lý payment và redirect về frontend
-        this.returnUrl = process.env.VNPAY_RETURN_URL || `http://localhost:${backendPort}/api/payments/vnpay-return`;
-        this.ipnUrl = process.env.VNPAY_IPN_URL || `http://localhost:${backendPort}/api/payments/vnpay-ipn`;
+        this.returnUrl = process.env.VNPAY_RETURN_URL || `https://meppod.onrender.com/api/payments/vnpay-return`;
+        this.ipnUrl = process.env.VNPAY_IPN_URL || `https://meppod.onrender.com/api/payments/vnpay-ipn`;
 
         this._configLoaded = true;
 
