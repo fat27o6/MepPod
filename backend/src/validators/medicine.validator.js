@@ -3,9 +3,9 @@ import { body, param } from 'express-validator';
 export default class MedicineValidator {
   static createMedicine() {
     return [
-      body('name').isString().notEmpty(),
+      body('name').isString().notEmpty().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('category').optional().isArray(),
-      body('category.*').optional().isString(),
+      body('category.*').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('unit').isString(),
       body('price').isFloat({ gt: 0 })
     ];
@@ -15,7 +15,7 @@ export default class MedicineValidator {
     return [
       param('id').isMongoId(),
       body('category').optional().isArray(),
-      body('category.*').optional().isString(),
+      body('category.*').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('price').optional().isFloat({ gt: 0 })
     ];
   }

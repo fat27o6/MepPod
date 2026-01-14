@@ -4,7 +4,7 @@ export default class PurchaseTransactionValidator {
   static createPurchaseTransaction() {
     return [
       body('import_id').isMongoId(),
-      body('payment_method').isString(),
+      body('payment_method').isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('amount').isFloat({ gt: 0 }),
       body('date').isISO8601().toDate(),
       body('accountant_id').isMongoId()

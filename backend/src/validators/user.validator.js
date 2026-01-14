@@ -3,7 +3,7 @@ import { body, param } from 'express-validator';
 export default class UserValidator {
   static createUser() {
     return [
-      body('username').isString().notEmpty(),
+      body('username').isString().notEmpty().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('password').optional().isString(),
       body('role')
         .optional()

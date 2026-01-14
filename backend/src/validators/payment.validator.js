@@ -4,7 +4,7 @@ export default class PaymentValidator {
   static createPayment() {
     return [
       body('invoice_id').isMongoId(),
-      body('method').isString(),
+      body('method').isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('amount').isFloat({ gt: 0 }),
       body('date').isISO8601().toDate()
     ];

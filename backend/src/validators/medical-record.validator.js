@@ -15,9 +15,9 @@ export default class MedicalRecordValidator {
         .withMessage('appointment_id phải là MongoDB ObjectId hợp lệ'),
       body('patient_id').isMongoId().withMessage('patient_id phải là MongoDB ObjectId hợp lệ'),
       body('doctor_id').isMongoId().withMessage('doctor_id phải là MongoDB ObjectId hợp lệ'),
-      body('diagnosis').isString().notEmpty().withMessage('Chẩn đoán không được để trống'),
-      body('treatment').optional().isString(),
-      body('notes').optional().isString(),
+      body('diagnosis').isString().notEmpty().withMessage('Chẩn đoán không được để trống').matches(/^[\p{L}\s.'-]{2,100}$/u),
+      body('treatment').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
+      body('notes').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
       body('prescriptions').optional().isArray()
     ];
   }
@@ -25,8 +25,8 @@ export default class MedicalRecordValidator {
   static updateMedicalRecord() {
     return [
       param('id').isMongoId(),
-      body('diagnosis').optional().isString(),
-      body('treatment').optional().isString()
+      body('diagnosis').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u),
+      body('treatment').optional().isString().matches(/^[\p{L}\s.'-]{2,100}$/u)
     ];
   }
 }
