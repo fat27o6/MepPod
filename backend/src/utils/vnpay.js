@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import qs from 'qs';
+import moment from 'moment-timezone';
 
 // Kế thừa
 /**
@@ -22,6 +23,7 @@ class VNPay {
         this.hashSecret = process.env.VNPAY_HASH_SECRET || '';
         this.paymentUrl = process.env.VNPAY_PAYMENT_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
         // Sử dụng PORT từ env hoặc default 5050 (vì Mac thường conflict port 5000)
+        // const backendPort = process.env.PORT || 5050;
         // Return URL nên trỏ về backend trực tiếp để xử lý
         // Backend sẽ xử lý payment và redirect về frontend
         this.returnUrl = process.env.VNPAY_RETURN_URL || `https://meppod.onrender.com/api/payments/vnpay-return`;
@@ -72,9 +74,10 @@ class VNPay {
             throw new Error('Thiếu thông tin orderId hoặc amount');
         }
 
-        const date = new Date();
-        const createDate = this.formatDate(date);
-        const expireDate = this.formatDate(new Date(date.getTime() + 15 * 60 * 1000)); // 15 phút
+        // Use Asia/Ho_Chi_Minh timezone for VNPay timestamps to avoid timezone skew
+        const now = moment().tz('Asia/Ho_Chi_Minh');
+        const createDate = now.format('YYYYMMDDHHmmss');
+        const expireDate = now.clone().add(15, 'minutes').format('YYYYMMDDHHmmss'); // 15 phút
 
         // Validate và format orderId (vnp_TxnRef)
         // VNPay yêu cầu: max 100 ký tự, chỉ chứa chữ số, chữ cái, dấu gạch dưới
@@ -115,7 +118,7 @@ class VNPay {
             vnp_OrderType: orderType,
             vnp_Locale: locale,
             vnp_ReturnUrl: vnp_ReturnUrl,
-            vnp_IpAddr: '127.0.0.1',
+            vnp_IpAddr: params.ipAddr || '127.0.0.1',
             vnp_CreateDate: createDate,
             vnp_ExpireDate: expireDate,
         };

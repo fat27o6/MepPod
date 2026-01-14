@@ -38,6 +38,12 @@ class VNPayController {
             // 3. Tạo payment URL từ VNPay
             console.log('🔄 Tạo VNPay URL cho invoice:', invoice_id, 'amount:', remaining);
             try {
+                // Determine client IP (support proxy via x-forwarded-for)
+                const forwardedFor = req.headers['x-forwarded-for'] || req.headers['x-forwarded-for'.toLowerCase()];
+                const clientIp = (forwardedFor && typeof forwardedFor === 'string')
+                    ? forwardedFor.split(',')[0].trim()
+                    : (req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress);
+
                 const paymentUrl = vnpay.createPaymentUrl({
                     orderId: invoice_id.toString(),
                     amount: remaining, // Chỉ cho phép thanh toán số tiền còn lại
@@ -45,6 +51,7 @@ class VNPayController {
                     orderType: 'other',
                     locale: 'vn',
                     bankCode: bankCode || undefined, // Nếu có chọn bank cụ thể
+                    ipAddr: clientIp, // use real client IP instead of hard-coded 127.0.0.1
                 });
                 console.log('✅ VNPay URL đã được tạo thành công');
 
@@ -83,46 +90,46 @@ class VNPayController {
             const frontendUrl = process.env.FRONTEND_URL || 'https://clinic-system-manager.vercel.app';
 
             if (!result.isValid || result.responseCode !== '00' || result.transactionStatus !== '00') {
-            await session.abortTransaction();
-            session.endSession();
-            return res.redirect(`${frontendUrl}/dashboard/invoices/${invoice_id}?payment=failed`);
+                await session.abortTransaction();
+                session.endSession();
+                return res.redirect(`${frontendUrl}/dashboard/invoices/${invoice_id}?payment=failed`);
             }
 
             const existingPayment = await Payment.findOne(
-            { invoice_id, method: 'VNPay', disabled: false },
-            null,
-            { session }
-            );
-
-            if (!existingPayment) {
-            const invoice = await invoiceDao.findById(invoice_id, session);
-            if (!invoice) throw new Error('Invoice not found');
-
-            const payments = await Payment.find(
-                { invoice_id, disabled: false },
+                { invoice_id, method: 'VNPay', disabled: false },
                 null,
                 { session }
             );
-            const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-            const remaining = invoice.total_amount - totalPaid;
 
-            if (result.amount > remaining) {
-                throw new Error('Payment amount exceeds remaining');
-            }
+            if (!existingPayment) {
+                const invoice = await invoiceDao.findById(invoice_id, session);
+                if (!invoice) throw new Error('Invoice not found');
 
-            await paymentDao.create({
-                invoice_id,
-                method: 'VNPay',
-                amount: result.amount,
-                date: new Date()
-            }, session);
+                const payments = await Payment.find(
+                    { invoice_id, disabled: false },
+                    null,
+                    { session }
+                );
+                const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+                const remaining = invoice.total_amount - totalPaid;
 
-            const newTotal = totalPaid + result.amount;
-            const newStatus =
-                newTotal >= invoice.total_amount ? 'Paid' :
-                newTotal > 0 ? 'Partial' : 'Unpaid';
+                if (result.amount > remaining) {
+                    throw new Error('Payment amount exceeds remaining');
+                }
 
-            await invoiceDao.update(invoice_id, { status: newStatus }, session);
+                await paymentDao.create({
+                    invoice_id,
+                    method: 'VNPay',
+                    amount: result.amount,
+                    date: new Date()
+                }, session);
+
+                const newTotal = totalPaid + result.amount;
+                const newStatus =
+                    newTotal >= invoice.total_amount ? 'Paid' :
+                        newTotal > 0 ? 'Partial' : 'Unpaid';
+
+                await invoiceDao.update(invoice_id, { status: newStatus }, session);
             }
 
             await session.commitTransaction();
@@ -134,7 +141,7 @@ class VNPayController {
             session.endSession();
             console.error('VNPay returnUrl error:', err);
             return res.redirect(
-            `${process.env.FRONTEND_URL}/dashboard/invoices/${req.query.vnp_TxnRef}?payment=failed`
+                `${process.env.FRONTEND_URL}/dashboard/invoices/${req.query.vnp_TxnRef}?payment=failed`
             );
         }
     }
@@ -146,8 +153,8 @@ class VNPayController {
         try {
             const result = vnpay.verifyReturnUrl(req.query);
             if (!result.isValid) {
-            await session.abortTransaction();
-            return res.status(400).json({ RspCode: '97', Message: 'Invalid signature' });
+                await session.abortTransaction();
+                return res.status(400).json({ RspCode: '97', Message: 'Invalid signature' });
             }
 
             const invoice_id = result.orderId;
@@ -155,22 +162,22 @@ class VNPayController {
             if (!invoice) throw new Error('Invoice not found');
 
             if (result.transactionStatus === '00' && result.responseCode === '00') {
-            const existingPayment = await Payment.findOne(
-                { invoice_id, method: 'VNPay', disabled: false },
-                null,
-                { session }
-            );
+                const existingPayment = await Payment.findOne(
+                    { invoice_id, method: 'VNPay', disabled: false },
+                    null,
+                    { session }
+                );
 
-            if (!existingPayment) {
-                await paymentDao.create({
-                invoice_id,
-                method: 'VNPay',
-                amount: result.amount,
-                date: new Date()
-                }, session);
+                if (!existingPayment) {
+                    await paymentDao.create({
+                        invoice_id,
+                        method: 'VNPay',
+                        amount: result.amount,
+                        date: new Date()
+                    }, session);
 
-                await invoiceDao.update(invoice_id, { status: 'Paid' }, session);
-            }
+                    await invoiceDao.update(invoice_id, { status: 'Paid' }, session);
+                }
             }
 
             await session.commitTransaction();
