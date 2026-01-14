@@ -32,4 +32,8 @@ router.get('/vnpay-return', ctrl.returnUrl);
 router.get('/vnpay-ipn', ctrl.ipnUrl);
 router.post('/vnpay-ipn', ctrl.ipnUrl);
 
+// Dev-only mock endpoints for testing QR/payment flows locally
+router.get('/vnpay-mock-return', ctrl.mockReturn);
+router.post('/vnpay-mock-ipn', ctrl.mockIpn);
+
 export default router;

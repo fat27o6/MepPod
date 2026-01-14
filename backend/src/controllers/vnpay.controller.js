@@ -255,6 +255,113 @@ class VNPayController {
             return res.status(500).json({ RspCode: '99', Message: err.message });
         }
     }
+    /**
+     * Dev-only: mock return handler to simulate VNPay redirect (useful for local/dev testing)
+     * Accepts query params: invoice_id, amount
+     */
+    async mockReturn(req, res) {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(404).json({ error: 'Not available in production' });
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const invoice_id = req.query.invoice_id || req.body.invoice_id;
+            const amount = Number(req.query.amount || req.body.amount || 0);
+
+            if (!invoice_id || !amount) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ error: 'Missing invoice_id or amount' });
+            }
+
+            const invoice = await invoiceDao.findById(invoice_id, session);
+            if (!invoice) throw new Error('Invoice not found');
+
+            const payments = await Payment.find({ invoice_id, disabled: false }, null, { session });
+            const totalPaid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+            const remaining = invoice.total_amount - totalPaid;
+
+            if (amount > remaining) {
+                throw new Error('Payment amount exceeds remaining');
+            }
+
+            await paymentDao.create({
+                invoice_id,
+                method: 'VNPay',
+                amount,
+                date: new Date()
+            }, session);
+
+            const newTotal = totalPaid + amount;
+            const newStatus =
+                newTotal >= invoice.total_amount ? 'Paid' :
+                    newTotal > 0 ? 'Partial' : 'Unpaid';
+
+            await invoiceDao.update(invoice_id, { status: newStatus }, session);
+
+            await session.commitTransaction();
+            session.endSession();
+
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            return res.redirect(`${frontendUrl}/dashboard/invoices/${invoice_id}?payment=success`);
+        } catch (err) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('VNPay mockReturn error:', err);
+            return res.status(500).json({ error: err.message });
+        }
+    }
+
+    /**
+     * Dev-only: mock IPN to simulate server-to-server notification
+     * Accepts JSON body: { invoice_id, amount }
+     */
+    async mockIpn(req, res) {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(404).json({ error: 'Not available in production' });
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const invoice_id = req.body.invoice_id;
+            const amount = Number(req.body.amount || 0);
+
+            if (!invoice_id || !amount) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ RspCode: '01', Message: 'Missing invoice_id or amount' });
+            }
+
+            const invoice = await invoiceDao.findById(invoice_id, session);
+            if (!invoice) throw new Error('Invoice not found');
+
+            const existingPayment = await Payment.findOne({ invoice_id, method: 'VNPay', disabled: false }, null, { session });
+            if (!existingPayment) {
+                await paymentDao.create({
+                    invoice_id,
+                    method: 'VNPay',
+                    amount,
+                    date: new Date()
+                }, session);
+
+                await invoiceDao.update(invoice_id, { status: 'Paid' }, session);
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+            return res.status(200).json({ RspCode: '00', Message: 'Success' });
+        } catch (err) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('VNPay mockIpn error:', err);
+            return res.status(500).json({ RspCode: '99', Message: err.message });
+        }
+    }
     //
 }
 
